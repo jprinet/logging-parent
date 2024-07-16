@@ -44,6 +44,9 @@ on:
       GPG_SECRET_KEY:
         description: GPG secret key for signing commits
         required: true
+      DV_ACCESS_TOKEN:
+        description: The Develocity access key
+        required: false
 
 jobs:
 
@@ -63,6 +66,35 @@ jobs:
           java-version: ${{ inputs.java-version }}
           cache: maven
           gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
+
+      - name: Set up Develocity
+        env:
+          HAS_TOKEN: ${{ secrets.DV_ACCESS_TOKEN != null }}
+        shell: bash
+        run: |
+          if [ -f .mvn/develocity.xml -a "$HAS_TOKEN" == "true" ]; then
+            # DEVELOCITY_VERSION=$(./mvnw help:evaluate -q -DforceStdout -Dexpression=develocity-maven-plugin.version)
+            # USER_DATA_VERSION=$(./mvnw help:evaluate -q -DforceStdout -Dexpression=common-custom-user-data-maven-extension.version)
+            cat >.mvn/extensions.xml <<EOF
+            <extensions>
+              <extension>
+                <groupId>com.gradle</groupId>
+                <artifactId>develocity-maven-extension</artifactId>
+                <version>1.21.5</version>
+              </extension>
+              <extension>
+                <groupId>com.gradle</groupId>
+                <artifactId>common-custom-user-data-maven-extension</artifactId>
+                <version>2.0</version>
+              </extension>
+            </extensions>
+          EOF
+          fi
+
+      - name: Setup Develocity Build Scan capture
+        uses: gradle/develocity-actions/maven-setup@v1
+        with:
+          develocity-access-key: ${{ secrets.DV_ACCESS_TOKEN }}
 
       - name: Build the project
         shell: bash
